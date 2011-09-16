@@ -87,10 +87,22 @@ $populator->populate($em->getRepository('BlogBundle:Tag'), 1000, function($tag) 
     $tag->setName(\Faker\Lorem::word());
 }, array(
     'perFlush'        => 10,
+    'clearAfterFlush' => false,
+    'factory'         => function($tagName) {
+        return new Tag($tagName);
+    },
     'constructorArgs' => array('foo'),
 ));
 ```
 
-* `perFlush` will limit the number of objects flushed in a single query.
+* `perFlush` will limit the number of objects flushed in a single query. By default
+  it's 100. Set to 0 or `false` to only flush once at the end.
 
-* `constructorArgs` is an array of args, passed directly to the object's constructor.
+* `clearAfterFlush` lets you disable clearing the ObjectManager after every flush.
+  Changing this to false can make things really slow and / or crashy.
+
+* `factory` is an optional callback for construction objects to populate. Use this
+  if your class needs constructor dependency injection or special instantiation.
+
+* `constructorArgs` an array of args, passed directly to the object's constructor.
+  If you specified a `factory` option, your factory will receive these aruguments.

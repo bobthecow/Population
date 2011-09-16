@@ -20,6 +20,8 @@ use Doctrine\ODM\MongoDB\DocumentRepository;
  */
 class Populator
 {
+    const DEFAULT_PER_FLUSH = 100;
+
     /**
      * Populate the ObjectRepository $repo with $count objects.
      *
@@ -51,8 +53,10 @@ class Populator
      * @param callable $callback Function which populates the data for each instance. It is passed a single argument,
      *     the object to be populated. If $callback returns false, the object will not be persisted.
      * @param array $options (default: array())
+     *     perFlush:        Limit the number of insertions performed in a single flush (default: 100)
+     *     clearAfterFlush: Clear the ObjectManager after each flush (default:true)
+     *     factory:         Optionally, specify a factory callback for populated objects
      *     constructorArgs: An array of args, passed directly to the document's constructor (default: null)
-     *     perFlush:        Limit the number of insertions performed in a single flush (default: unlimited)
      * @return void
      */
     public function populate(ObjectRepository $repo, $count, $callback, array $options = array())
@@ -79,20 +83,30 @@ class Populator
      *
      * @access public
      * @param DocumentRepository $repo
+     * @param callable $factory
+     * @param array $args
      * @param int $count
      * @param callable $callback Function which populates the data for each instance. It is passed a single argument,
      *     the document to be populated. If $callback returns false, the document will not be persisted.
      * @param array $options (default: array())
+     *     perFlush:        Limit the number of insertions performed in a single flush (default: 100)
+     *     clearAfterFlush: Clear the DocumentManager after each flush (default:true)
+     *     factory:         Optionally, specify a factory callback for populated objects
      *     constructorArgs: An array of args, passed directly to the document's constructor (default: null)
-     *     perFlush:        Limit the number of insertions performed in a single flush (default: unlimited)
      * @return void
      */
     public function populateDocument(DocumentRepository $repo, $count, $callback, array $options = array())
     {
-        $dm        = $repo->getDocumentManager();
-        $reflClass = $repo->getClassMetadata()->reflClass;
+        $dm = $repo->getDocumentManager();
 
-        $this->populateObject($dm, $reflClass, $count, $callback, $options);
+        if (isset($options['factory'])) {
+            $factory   = $options['factory'];
+        } else {
+            $reflClass = $repo->getClassMetadata()->reflClass;
+            $factory   = array($reflClass, 'newInstanceArgs');
+        }
+
+        $this->populateObject($dm, $factory, $count, $callback, $options);
     }
 
     /**
@@ -102,37 +116,56 @@ class Populator
      *
      * @access public
      * @param EntityRepository $repo
+     * @param callable $factory
+     * @param array $args
      * @param int $count
      * @param callable $callback Function which populates the data for each instance. It is passed a single argument,
      *     the entity to be populated. If $callback returns false, the entity will not be persisted.
      * @param array $options (default: array())
+     *     perFlush:        Limit the number of insertions performed in a single flush (default: 100)
+     *     clearAfterFlush: Clear the EntityManager after each flush (default:true)
+     *     factory:         Optionally, specify a factory callback for populated objects
      *     constructorArgs: An array of args, passed directly to the document's constructor (default: null)
-     *     perFlush:        Limit the number of insertions performed in a single flush (default: unlimited)
      * @return void
      */
     public function populateEntity(EntityRepository $repo, $count, $callback, array $options = array())
     {
-        $em        = $repo->getEntityManager();
-        $reflClass = $repo->getClassMetadata()->reflClass;
+        $em = $repo->getEntityManager();
 
-        $this->populateObject($em, $reflClass, $count, $callback, $options);
+        if (isset($options['factory'])) {
+            $factory   = $options['factory'];
+        } else {
+            $reflClass = $repo->getClassMetadata()->reflClass;
+            $factory   = array($reflClass, 'newInstanceArgs');
+        }
+
+        $this->populateObject($em, $factory, $count, $callback, $options);
     }
 
-    protected function populateObject(ObjectManager $om, \ReflectionClass $reflClass, $count, $callback, array $options = array())
+    protected function populateObject(ObjectManager $om, $factory, $count, $callback, array $options = array())
     {
+        $perFlush        = isset($options['perFlush']) ? $options['perFlush'] : self::DEFAULT_PER_FLUSH;
+        $clearAfterFlush = isset($options['clearAfterFlush']) ? $options['clearAfterFlush'] : true;
+        $constructorArgs = isset($options['constructorArgs']) ? $options['constructorArgs'] : array();
+
         for ($i = 0; $i < $count; $i++) {
-            $args = isset($options['constructorArgs']) ? $options['constructorArgs'] : array();
-            $obj = $reflClass->newInstanceArgs($args);
+            $obj = call_user_func_array($factory, $constructorArgs);
 
             if (call_user_func($callback, $obj) !== false) {
                 $om->persist($obj);
             }
 
-            if (isset($options['perFlush']) && (($i + 1) % $options['perFlush'] == 0)) {
+            if ($perFlush && (($i + 1) % $perFlush == 0)) {
                 $om->flush();
+                if ($clearAfterFlush) {
+                    $om->clear();
+                }
             }
         }
 
         $om->flush();
+        if ($clearAfterFlush) {
+            $om->clear();
+        }
     }
 }
