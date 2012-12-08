@@ -64,16 +64,15 @@ class Populator
     {
         switch (true) {
             case $repo instanceof DocumentRepository:
-                return $this->populateDocument($repo, $count, $callback, $options);
+                $this->populateDocument($repo, $count, $callback, $options);
                 break;
 
             case $repo instanceof EntityRepository:
-                return $this->populateEntity($repo, $count, $callback, $options);
+                $this->populateEntity($repo, $count, $callback, $options);
                 break;
 
             default:
                 throw new \InvalidArgumentException('Unexpected ObjectRepository class: ' . get_class($repo));
-                break;
         }
     }
 
@@ -84,8 +83,6 @@ class Populator
      *
      * @access public
      * @param DocumentRepository $repo
-     * @param callable $factory
-     * @param array $args
      * @param int $count
      * @param callable $callback Function which populates the data for each instance. It is passed a single argument,
      *     the document to be populated. If $callback returns false, the document will not be persisted.
@@ -117,9 +114,8 @@ class Populator
      *
      * @access public
      * @param EntityRepository $repo
-     * @param callable $factory
-     * @param array $args
      * @param int $count
+     * @param array $options
      * @param callable $callback Function which populates the data for each instance. It is passed a single argument,
      *     the entity to be populated. If $callback returns false, the entity will not be persisted.
      * @param array $options (default: array())

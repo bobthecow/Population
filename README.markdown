@@ -105,4 +105,4 @@ $populator->populate($em->getRepository('BlogBundle:Tag'), 1000, function($tag) 
   if your class needs constructor dependency injection or special instantiation.
 
 * `constructorArgs` an array of args, passed directly to the object's constructor.
-  If you specified a `factory` option, your factory will receive these aruguments.
+  If you specified a `factory` option, your factory will receive these arguments.
