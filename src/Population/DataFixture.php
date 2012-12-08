@@ -38,7 +38,7 @@ abstract class DataFixture implements FixtureInterface
      */
     public function populate(ObjectRepository $repo, $count, $callback, array $constructorArgs = array())
     {
-        return $this->getPopulator()->populate($repo, $count, $callback, $constructorArgs);
+        $this->getPopulator()->populate($repo, $count, $callback, $constructorArgs);
     }
 
     /**
